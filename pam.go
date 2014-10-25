@@ -112,18 +112,26 @@ func install(pkg string, force bool) {
 func extractArchive(file string, destination string) {
 	log.Println("Extracting:", file)
 	sevenza := detect7za()
-	commandSlice := []string{sevenza, "e", file, destination}
-	log.Println(commandSlice)
-	c := exec.Command(commandSlice[0], commandSlice[1:]...)
-	e := c.Run()
+	cmds := []string{sevenza, "x", file, "-o"+destination}
+	e := exeQ(cmds)
 	if e != nil {
 		log.Fatal("Error during extraction : ", e)
 	}
+	log.Printf("Extraction complete")
+}
+
+func exeQ(cmds []string) error{
+	log.Println("Running:", cmds)
+	c := exec.Command(cmds[0], cmds[1:]...)
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	return c.Run()
 }
 
 func detect7za() string{
 	sevenza := path.Join(pamrc.Bin, "7za", "7za.exe")
 	if _, err := os.Stat(sevenza); os.IsNotExist(err) {
+		log.Println("Downloading 7za")
 		os.MkdirAll(path.Join(pamrc.Bin, "7za"), os.ModeDir)
 		err := downloadFile(SEVENZA_LOC, sevenza ,false, SEVENZA_CHECKSUM)
 		if err != nil {
