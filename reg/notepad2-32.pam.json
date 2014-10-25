@@ -2,7 +2,7 @@
      "name": "notepad2-32",
      "version": "4.2.25",
      "description": "Notepad Application, only better",
-     "archive": {
+     "source": {
          "url": "http://www.flos-freeware.ch/zip/notepad2_4.2.25_x86.zip",
          "type": "zip"
      }

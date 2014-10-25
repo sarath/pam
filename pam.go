@@ -1,10 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"io/ioutil"
 	"encoding/json"
+	"path"
+	"log"
 )
 
 type PamRcConf struct {
@@ -13,18 +14,43 @@ type PamRcConf struct {
 	Registry string
 }
 
-type PamConf struct {
+//{
+//"name": "gitp",
+//"version": "1.9.0",
+//"description": "Git commands",
+//"source": {
+//"url": "http://msysgit.googlecode.com/files/PortableGit-1.9.0-preview20140217.7z",
+//"type": "7z"
+//},
+//"path": [
+//"bin", "cmd", "share/vim/vim73"
+//],
+//"env": {}
+//}
 
+type PamConf struct {
+	Name string
+	Version string
+	Description string
+	Source struct {
+		Url string
+		Type string
+	}
+	Path []string
+	Env map[string]string
 }
 
-var pamrc *PamRcConf
+var (
+	pamrc *PamRcConf = new(PamRcConf)
+	PAM_EXTENSION = ".pam.json"
+	PAM_DEF_RC = "./config/pam.rc.json"
+)
 
 func main() {
 
 
 	usage := func() {
-		fmt.Println("usage pam install|remove pkgname")
-		os.Exit(1)
+		log.Fatalf("usage pam install|remove pkgname\n")
 	}
 
 	if len(os.Args) < 3 {
@@ -50,30 +76,40 @@ func main() {
 
 
 func install(pkg string) {
-	fmt.Printf("Installing: %v\n", pkg)
-//	pamc := readPamConfig(pkg)
+	log.Printf("Installing: %v, ", pkg)
+	var pamc PamConf
+	readPamConfig(pkg, &pamc)
+	log.Printf("version: %v, from: %s", pamc.Version, pamc.Source.Url)
+}
+
+func readPamConfig(pkg string, o *PamConf) {
+	p := path.Join(pamrc.Registry, pkg + PAM_EXTENSION)
+	e := readJson(p, o)
+	if e != nil {
+		log.Fatalf("Error reading %v %v", p, e)
+	}
 }
 
 func remove(pkg string) {
-	fmt.Printf("Removing: %v\n", pkg)
+	log.Printf("Removing: %v\n", pkg)
 }
 
 func initConf() {
-	file, e := ioutil.ReadFile("./config/pam.rc.json") //todo: externalise
+	e := readJson(PAM_DEF_RC, pamrc)
 	if e != nil {
-		pamrc = new(PamRcConf) // todo:defaults
-		return
+		log.Fatalf("Error reading pam.rc.json %v\n", e)
 	}
-	e = json.Unmarshal(file, &pamrc)
-	if e != nil {
-		exitFail("Error reading config file content %v\n", e)
-	}
-	fmt.Printf("bin:%s\n", pamrc.Bin)
+	log.Printf("bin:%s\n", pamrc.Bin)
 }
 
-func exitFail(fm string, a ...interface{}) {
-	fmt.Printf(fm,a)
-	os.Exit(2)
+func readJson(filename string, o interface{}) (e error) {
+	file, e := ioutil.ReadFile(filename)
+	log.Printf("read file succesfully: %s %s", filename, string(file))
+	if e == nil {
+		e = json.Unmarshal(file, &o)
+	}
+	return
 }
+
 
 

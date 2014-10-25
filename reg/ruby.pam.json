@@ -1,7 +1,7 @@
 {
     "name": "ruby",
     "version": "2.0.0",
-    "archive": {
+    "source": {
         "url" : "http://dl.bintray.com/oneclick/rubyinstaller/ruby-2.0.0-p451-x64-mingw32.7z?direct",
         "type": "7z"
     },

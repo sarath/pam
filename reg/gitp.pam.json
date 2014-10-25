@@ -2,12 +2,12 @@
      "name": "gitp",
      "version": "1.9.0",
      "description": "Git commands",
-     "archive": {
+     "source": {
          "url": "http://msysgit.googlecode.com/files/PortableGit-1.9.0-preview20140217.7z",
          "type": "7z"
      },
      "path": [
         "bin", "cmd", "share/vim/vim73"
      ],
-     "env": false
+     "env": {}
  }
