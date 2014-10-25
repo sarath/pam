@@ -1,7 +1,5 @@
 {
-    "dirs":{
-        "download": "c:/sar/pam/.cache",
-        "bin": "c:/sar/pam",
-        "reg": "./reg"
-    }
+    "download": "c:/sar/pam/.cache",
+    "bin": "c:/sar/pam",
+    "registry": "./reg"
 }
