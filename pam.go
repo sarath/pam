@@ -50,7 +50,7 @@ var (
 	pamrc *PamRcConf = new(PamRcConf)
 	PAM_EXTENSION    = ".pam.json"
 	PAM_DEF_RC       = "./config/pam.rc.json"
-	SEVENZA_LOC      = "https://github.com/sarath/pam/blob/master/dist/7za.orig?raw=true"
+	SEVENZA_LOC      = "https://github.com/sarath/pam/releases/download/pre-alpha/7za.exe"
 	SEVENZA_CHECKSUM = []byte("afdaf")
 	PLSEP = string(os.PathListSeparator)
 )
