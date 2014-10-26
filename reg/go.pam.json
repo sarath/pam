@@ -9,6 +9,6 @@
         "go/bin"
      ],
      "env": {
-        "GOROOT" : "go"
+        "GOROOT" : "%INSTALL%/go"
      }
  }

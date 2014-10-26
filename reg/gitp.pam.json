@@ -1,9 +1,9 @@
 {
      "name": "gitp",
-     "version": "1.9.0",
+     "version": "1.9.4",
      "description": "Git commands",
      "source": {
-         "url": "http://msysgit.googlecode.com/files/PortableGit-1.9.0-preview20140217.7z",
+         "url": "https://github.com/msysgit/msysgit/releases/download/Git-1.9.4-preview20140929/PortableGit-1.9.4-preview20140929.7z",
          "type": "7z"
      },
      "path": [
