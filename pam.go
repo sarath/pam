@@ -3,13 +3,14 @@ package main
 import (
 	"os"
 	"io/ioutil"
-//	"crypto/md5"
+	//	"crypto/md5"
 	"encoding/json"
 	"path"
 	"log"
 	"net/http"
 	"io"
 	"os/exec"
+	"strings"
 )
 
 type PamRcConf struct {
@@ -37,8 +38,8 @@ type PamConf struct {
 	Version     string
 	Description string
 	Source struct {
-		Url  string
-		Type string
+		Url      string
+		Type     string
 		Checksum []byte
 	}
 	Path        []string
@@ -49,8 +50,9 @@ var (
 	pamrc *PamRcConf = new(PamRcConf)
 	PAM_EXTENSION    = ".pam.json"
 	PAM_DEF_RC       = "./config/pam.rc.json"
-	SEVENZA_LOC = "https://github.com/sarath/pam/blob/master/dist/7za.orig?raw=true"
+	SEVENZA_LOC      = "https://github.com/sarath/pam/blob/master/dist/7za.orig?raw=true"
 	SEVENZA_CHECKSUM = []byte("afdaf")
+	PLSEP = string(os.PathListSeparator)
 )
 
 func main() {
@@ -100,19 +102,76 @@ func install(pkg string, force bool) {
 	}
 
 	//extract
-	extractArchive(archFileLoc, path.Join(pamrc.Bin, pamc.Name))
-
-	//setup paths
+	extractArchive(archFileLoc, getInstallFolder(pamc), force)
 
 	//setup env
+	setupEnv(pamc)
 
+	//setup paths
+	setupPaths(pamc)
 
+	printComplete(pamc)
 }
 
-func extractArchive(file string, destination string) {
+func printComplete(pamc PamConf) {
+	log.Println(pamc.Name, pamc.Version, "installation complete.")
+}
+
+func setupPaths(pamc PamConf) {
+	if pamc.Path == nil || len(pamc.Path) == 0 {
+		log.Println("Setting Path: Nothing to set")
+		return
+	}
+	log.Println("Setting Path :", pamc.Path)
+	pamPath := os.Getenv("PAM_PATH")
+	for _, v := range pamc.Path {
+		nv := path.Join(getInstallFolder(pamc), v + PLSEP)
+		if strings.Contains(pamPath, nv) {
+			continue
+		}
+		pamPath = nv + pamPath
+		cmds := []string{"setx", "PAM_PATH", pamPath}
+		exeQ(cmds)
+	}
+	setPamPathInPathIfNecessary()
+}
+
+func setPamPathInPathIfNecessary() {
+	path := os.Getenv("PATH")
+	pamPathV := os.Getenv("PAM_PATH") + PLSEP
+	if !strings.Contains(path, pamPathV) {
+		log.Println("You must add %PAM_PATH% in PATH, once, to make pam installed software run in path")
+	}
+}
+
+func setupEnv(pamc PamConf) {
+	if pamc.Env == nil || len(pamc.Env) == 0 {
+		log.Println("Setting Env: Nothing to set")
+		return
+	}
+	log.Println("Setting Env :", pamc.Env)
+	for k, v := range pamc.Env {
+		nv := strings.Replace(v, "%INSTALL%", getInstallFolder(pamc), -1) //todo test
+		cmds := []string{"setx", k, nv}
+		exeQ(cmds)
+	}
+}
+
+func getInstallFolder(pamc PamConf) string{
+	return path.Join(pamrc.Bin, pamc.Name)
+}
+
+func extractArchive(file string, destination string, force bool) {
+	if _, err := os.Stat(destination); err == nil && !force{
+		log.Println(destination, "exits, user force (-f)")
+		return
+	}
 	log.Println("Extracting:", file)
 	sevenza := detect7za()
-	cmds := []string{sevenza, "x", file, "-o"+destination}
+	cmds := []string{sevenza, "x", file, "-o" + destination, "-aos"}
+	if force {
+		cmds[len(cmds)-1] = "-aoa"
+	}
 	e := exeQ(cmds)
 	if e != nil {
 		log.Fatal("Error during extraction : ", e)
@@ -120,7 +179,7 @@ func extractArchive(file string, destination string) {
 	log.Printf("Extraction complete")
 }
 
-func exeQ(cmds []string) error{
+func exeQ(cmds []string) error {
 	log.Println("Running:", cmds)
 	c := exec.Command(cmds[0], cmds[1:]...)
 	c.Stdout = os.Stdout
@@ -128,14 +187,14 @@ func exeQ(cmds []string) error{
 	return c.Run()
 }
 
-func detect7za() string{
+func detect7za() string {
 	sevenza := path.Join(pamrc.Bin, "7za", "7za.exe")
 	if _, err := os.Stat(sevenza); os.IsNotExist(err) {
 		log.Println("Downloading 7za")
 		os.MkdirAll(path.Join(pamrc.Bin, "7za"), os.ModeDir)
-		err := downloadFile(SEVENZA_LOC, sevenza ,false, SEVENZA_CHECKSUM)
+		err := downloadFile(SEVENZA_LOC, sevenza, false, SEVENZA_CHECKSUM)
 		if err != nil {
-			log.Fatal("Error downloading 7za.exe, Must have 7za in ", sevenza , err)
+			log.Fatal("Error downloading 7za.exe, Must have 7za in ", sevenza, err)
 		}
 	}
 	return sevenza
@@ -172,7 +231,7 @@ func downloadFile(src string, dest string, force bool, checksum []byte) (err err
 
 	if checksum != nil {
 
-//		todo: md5.Sum(out)
+		//		todo: md5.Sum(out)
 	}
 	return
 }
