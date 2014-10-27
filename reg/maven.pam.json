@@ -1,0 +1,14 @@
+{
+     "name": "maven",
+     "version": "3.2.3",
+     "description": "Apache Maven",
+     "source": {
+         "url": "http://mirrors.ibiblio.org/apache/maven/maven-3/3.2.3/binaries/apache-maven-3.2.3-bin.zip"
+     },
+     "path": [
+        "apache-maven-3.2.3/bin"
+     ],
+     "env": {
+        "M2_HOME" : "%INSTALL%/apache-maven-3.2.3"
+     }
+ }
