@@ -50,8 +50,7 @@ var (
 	pamrc *PamRcConf = new(PamRcConf)
 	PAM_EXTENSION    = ".pam.json"
 	PAM_DEF_RC       = "./config/pam.rc.json"
-	SEVENZA_LOC      = "https://github.com/sarath/pam/releases/download/pre-alpha/7za.exe"
-	SEVENZA_CHECKSUM = []byte("afdaf")
+	SEVENZA     = "7za"
 	PLSEP = string(os.PathListSeparator)
 )
 
@@ -167,7 +166,7 @@ func extractArchive(file string, destination string, force bool) {
 		return
 	}
 	log.Println("Extracting:", file)
-	sevenza := detect7za()
+	sevenza := path.Join(pamrc.Bin,SEVENZA,SEVENZA) //$Bin/7za/7za
 	cmds := []string{sevenza, "x", file, "-o" + destination, "-aos"}
 	if force {
 		cmds[len(cmds)-1] = "-aoa"
@@ -185,19 +184,6 @@ func exeQ(cmds []string) error {
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	return c.Run()
-}
-
-func detect7za() string {
-	sevenza := path.Join(pamrc.Bin, "7za", "7za.exe")
-	if _, err := os.Stat(sevenza); os.IsNotExist(err) {
-		log.Println("Downloading 7za")
-		os.MkdirAll(path.Join(pamrc.Bin, "7za"), os.ModeDir)
-		err := downloadFile(SEVENZA_LOC, sevenza, false, SEVENZA_CHECKSUM)
-		if err != nil {
-			log.Fatal("Error downloading 7za.exe, Must have 7za in ", sevenza, err)
-		}
-	}
-	return sevenza
 }
 
 func downloadFile(src string, dest string, force bool, checksum []byte) (err error) {
