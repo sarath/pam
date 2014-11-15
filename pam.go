@@ -102,8 +102,11 @@ func install(pkg string, force bool) {
 		log.Fatal("Error while downloading", err)
 	}
 
+	installFolder := getInstallFolder(pkg)
 	//extract
-	extractArchive(archFileLoc, getInstallFolder(pamc.Name), force)
+	extractArchive(archFileLoc, installFolder, force)
+
+	saveJson(path.Join(installFolder, PAM_EXTENSION), pamc)
 
 	//setup env
 	setupEnv(pamc)
@@ -111,11 +114,48 @@ func install(pkg string, force bool) {
 	//setup paths
 	setupPaths(pamc)
 
-	printComplete(pamc)
+	printComplete(pamc, "installation complete")
 }
 
-func printComplete(pamc PamConf) {
-	log.Println(pamc.Name, pamc.Version, "installation complete.")
+func remove(pkg string) {
+	p := path.Join(pamrc.Bin, pkg)
+	pamc := PamConf{}
+	readJson(path.Join(p, PAM_EXTENSION), &pamc)
+	log.Printf("Removing: %v\n", p)
+	os.RemoveAll(p)
+
+	removePath(pamc)
+
+	printComplete(pamc, "removed")
+	removeEnv(pamc)
+}
+
+func removePath(pamc PamConf) {
+	pathv := os.Getenv("PAM_PATH")
+	log.Println("Path before:", pathv)
+	for _, v := range pamc.Path {
+		nv := path.Join(getInstallFolder(pamc.Name), v+PLSEP)
+		log.Println("Path :removing:", nv)
+		pathv = strings.Replace(pathv, nv, "", -1);
+	}
+	log.Println("Path after:", pathv)
+
+}
+
+func removeEnv(pamc PamConf) {
+	log.Printf("The following Environment variables were setup when installing %v, please remove them manually\n", pamc.Name)
+	for k, _ := range pamc.Env {
+		log.Print(k, " ")
+	}
+	launchSysEnv()
+}
+
+func launchSysEnv() {
+	exeQ([]string{"rundll32", "sysdm.cpl,EditEnvironmentVariables"})
+}
+
+func printComplete(pamc PamConf, oplog string) {
+	log.Println(pamc.Name, pamc.Version, oplog)
 }
 
 func setupPaths(pamc PamConf) {
