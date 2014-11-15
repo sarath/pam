@@ -11,6 +11,8 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+	//	"crypto/des"
+	"path/filepath"
 )
 
 type PamRcConf struct {
@@ -49,12 +51,14 @@ type PamConf struct {
 var (
 	pamrc *PamRcConf = new(PamRcConf)
 	PAM_EXTENSION    = ".pam.json"
-	PAM_DEF_RC       = "./config/pam.rc.json"
-	SEVENZA     = "7za"
-	PLSEP = string(os.PathListSeparator)
+	PAMRC            = ".pamrc.json"
+	SEVENZA          = "7za"
+	PLSEP            = string(os.PathListSeparator)
 )
 
 func main() {
+
+	initConf()
 
 
 	usage := func() {
@@ -64,8 +68,6 @@ func main() {
 	if len(os.Args) < 3 {
 		usage()
 	}
-
-	initConf()
 
 	cmd := os.Args[1]
 	pkg := os.Args[2]
@@ -101,7 +103,7 @@ func install(pkg string, force bool) {
 	}
 
 	//extract
-	extractArchive(archFileLoc, getInstallFolder(pamc), force)
+	extractArchive(archFileLoc, getInstallFolder(pamc.Name), force)
 
 	//setup env
 	setupEnv(pamc)
@@ -124,11 +126,11 @@ func setupPaths(pamc PamConf) {
 	log.Println("Setting Path :", pamc.Path)
 	pamPath := os.Getenv("PAM_PATH")
 	for _, v := range pamc.Path {
-		nv := path.Join(getInstallFolder(pamc), v + PLSEP)
+		nv := path.Join(getInstallFolder(pamc.Name), v+PLSEP)
 		if strings.Contains(pamPath, nv) {
 			continue
 		}
-		pamPath = nv + pamPath
+		pamPath = nv+pamPath
 		cmds := []string{"setx", "PAM_PATH", pamPath}
 		exeQ(cmds)
 	}
@@ -150,23 +152,27 @@ func setupEnv(pamc PamConf) {
 	}
 	log.Println("Setting Env :", pamc.Env)
 	for k, v := range pamc.Env {
-		nv := strings.Replace(v, "%INSTALL%", getInstallFolder(pamc), -1) //todo test
-		cmds := []string{"setx", k, nv}
-		exeQ(cmds)
+		nv := strings.Replace(v, "%INSTALL%", getInstallFolder(pamc.Name), -1) //todo test
+		setx(k, nv)
 	}
 }
 
-func getInstallFolder(pamc PamConf) string{
-	return path.Join(pamrc.Bin, pamc.Name)
+func setx(k string, v string) {
+	cmds := []string{"setx", k, v}
+	exeQ(cmds)
+}
+
+func getInstallFolder(pkg string) string {
+	return path.Join(pamrc.Bin, pkg)
 }
 
 func extractArchive(file string, destination string, force bool) {
-	if _, err := os.Stat(destination); err == nil && !force{
+	if _, err := os.Stat(destination); err == nil && !force {
 		log.Println(destination, "exits, user force (-f)")
 		return
 	}
 	log.Println("Extracting:", file)
-	sevenza := path.Join(pamrc.Bin,SEVENZA,SEVENZA) //$Bin/7za/7za
+	sevenza := path.Join(pamrc.Bin, SEVENZA, SEVENZA) //$Bin/7za/7za
 	cmds := []string{sevenza, "x", file, "-o" + destination, "-aos"}
 	if force {
 		cmds[len(cmds)-1] = "-aoa"
@@ -216,7 +222,6 @@ func downloadFile(src string, dest string, force bool, checksum []byte) (err err
 	log.Printf("Download complete [%v bytes]", n)
 
 	if checksum != nil {
-
 		//		todo: md5.Sum(out)
 	}
 	return
@@ -237,16 +242,58 @@ func readPamConfig(pkg string, o *PamConf) {
 	}
 }
 
-func remove(pkg string) {
-	log.Printf("Removing: %v\n", pkg)
+func initConf() {
+	pamrcloc := genPamRcLoc()
+	log.Println("Reading user's pamrc:", pamrcloc)
+
+	if _, err := os.Stat(pamrcloc); err != nil {
+		//create defaults
+		// first run
+		log.Printf("%s doesnot exist, creating it, setting up first run", pamrcloc)
+
+		pamloc, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+
+		pamrc.Bin = pamloc
+		pamrc.Cache = path.Join(pamloc, ".cache")
+		pamrc.Registry = path.Join(pamloc, ".reg")
+
+		log.Println("creating", pamrcloc, *pamrc)
+		err = saveJson(pamrcloc, pamrc)
+		if err != nil {
+			log.Fatalf("Unable to create %s", pamrcloc)
+		}
+
+
+		//		os.Mkdir(pamrc.Cache, os.FileMode(644))
+		//		os.Mkdir(pamrc.Registry, os.FileMode(644))
+
+		setx("PAM_HOME", pamloc)
+		if os.Getenv("PAM_PATH") == "" {
+			setx("PAM_PATH", "%PAM_HOME%")
+		}
+		//		find a way to do this effectively.
+		//		if !strings.Contains(os.Getenv("PATH"), "%PAM_PATH%") {
+		//			setx("PATH", "%PAM_PATH%;"+os.Getenv("PATH"))
+		//		}
+
+		log.Println("Please add %PAM_PATH% to %PATH% manually")
+		launchSysEnv()
+		os.Exit(0)
+	}
+
+	e := readJson(pamrcloc, pamrc)
+	if e != nil {
+		log.Fatalf("Error reading pamrc.json %v\n", e)
+	}
 }
 
-func initConf() {
-	e := readJson(PAM_DEF_RC, pamrc)
-	if e != nil {
-		log.Fatalf("Error reading pam.rc.json %v\n", e)
+func genPamRcLoc() string {
+	dest := os.Getenv("HOME")
+	if dest == "" {
+		dest = os.Getenv("USERPROFILE")
 	}
-	log.Printf("bin:%s\n", pamrc.Bin)
+
+	return path.Join(dest, PAMRC)
 }
 
 func readJson(filename string, o interface{}) (e error) {
@@ -258,5 +305,9 @@ func readJson(filename string, o interface{}) (e error) {
 	return
 }
 
+func saveJson(filename string, o interface{}) (e error) {
+	content, _ := json.Marshal(o)
+	return ioutil.WriteFile(filename, content, os.FileMode(644))
+}
 
 

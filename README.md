@@ -20,8 +20,6 @@ Run the following in command line
     cd c:\me\pam
     pam
 
-(TODO)
-
 * the folder that pam is running in (c:\me\pam) is set as %PAM_HOME% folder
 * %PAM_PATH% = %PAM_HOME% env var is created, appended to %PATH%
 * .pamrc.json: registry is set to %PAM_HOME%\.reg (unzipped folder contains this), can be changed
